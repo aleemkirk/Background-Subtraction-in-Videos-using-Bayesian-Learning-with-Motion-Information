@@ -1,0 +1,2 @@
+This project implents the algorithm in the paper titled "Background Subtraction in Videos using Bayesian learning with Motion Information" in python.
+Src: http://www.bmva.org/bmvc/2008/papers/28.pdf

@@ -1,0 +1,2 @@
+This folder contains python code to help identify the regions of motion in a image sequence. 
+The code does this by dividing a video frame into segments (blocks). Each block is then analyzed to determine if they contain moving objects.

@@ -1,18 +1,18 @@
 #classes used to identify the regions of motion in a video frame
-import cv2
 import numpy as np
+import cv2 as cv2
 import math
 import pandas
 
 class imageSegmentor: #segments a frame into blocks of dimention x*y
-    y, x = 0, 0
+    segShape = ()             #tuple of segment/block dimentions
     originalImgShape = ()   #dimentions of original image. Used in image reconstruction
     paddedImgShape =  ()    #dimentions of padded image. Used in image reconstruction
     currentFrame = []
     currentFrameSegments, previousFrameSegments = [], []
 
     def __init__(self, firstFrame, x, y): #initalizes the dimentions of the blocks/segments
-        self.x, self.y = x, y
+        self.segShape = (x, y)
         self.currentFrame = firstFrame
         self.originalImgShape = firstFrame.shape
 
@@ -40,7 +40,7 @@ class motionDetector:   #Determins if motions has occured in a segment
         self.motionDetector = []
 
     def determineMotion(self):
-        for i in range(0, self.segmentor.currentFrameSegments, 1):
+        for i in range(0, self.segmentor.currentFrameSegments.shape[0], 1):
             if(np.sum(np.sum(self.segmentor.currentFrameSegments[i] - self.segmentor.previousFrameSegments[i], axis=0)) >= self.motionThresh): self.motionArr[i] = 1
             else: self.motionArr[i] = 0
 
@@ -51,4 +51,7 @@ class imageReconstructor:   #Reconstructs the image to show regions of motion
         return
 
 #--------------------Testing Section---------------------------
-print("Everything is working!")
+img = cv2.imread("img1.jpg", 0)
+cv2.imshow("image", img)
+cv2.waitKey(0)
+cv2.destroyAllWindows()

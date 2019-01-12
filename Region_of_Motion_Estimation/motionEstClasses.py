@@ -38,7 +38,7 @@ class imageSegmentor: #segments a frame into blocks of dimention x*y
         self.padImg()
         for y in range(0, int(self.paddedImgShape[0]/self.segShape[0]) , 1):
             for x in range(0, int(self.paddedImgShape[1]/self.segShape[1]), 1):
-                seg = self.paddedImage[y*self.segShape[1]:y*self.segShape[1] + self.segShape[1], x*self.segShape[0]:x*self.segShape[0] + self.segShape[0]]
+                seg = self.paddedImage[y*self.segShape[0]:y*self.segShape[0] + self.segShape[0], x*self.segShape[1]:x*self.segShape[1] + self.segShape[1]]
                 a.append(seg)
         self.currentFrameSegments = np.asarray(a)
         return self.currentFrameSegments, self.previousFrameSegments
@@ -84,11 +84,11 @@ class imageReconstructor:   #Reconstructs the image to show regions of motion
             y = int(i/int(self.segmentor.paddedImgShape[1]/self.segmentor.segShape[1]))
             a.append((y, x))
         return a
-
+           
 
 #--------------------Testing Section---------------------------
 img = cv2.imread("img1.jpg", 0)
-imgSegmentor = imageSegmentor(img, 200, 200)
+imgSegmentor = imageSegmentor(img, 642, 200)
 motionDetec = motionDetector(imgSegmentor, 1)
 imgReconstruct = imageReconstructor(imgSegmentor, motionDetec)
 print(imgSegmentor.originalImgShape)
@@ -96,6 +96,8 @@ print(imgSegmentor.paddedImgShape)
 print((imgSegmentor.paddedImgShape[0]/imgSegmentor.segShape[0], imgSegmentor.paddedImgShape[1]/imgSegmentor.segShape[1]))
 print(motionDetec.motionArr.shape)
 curr, prev = imgSegmentor.segmentImage()
+cv2.imshow("padded img", imgSegmentor.paddedImage)
+cv2.imshow("segment", curr[4])
 #moving to the next frame
 img = cv2.imread("img1.jpg", 0) #read in another image
 imgSegmentor.changeFrame(img)

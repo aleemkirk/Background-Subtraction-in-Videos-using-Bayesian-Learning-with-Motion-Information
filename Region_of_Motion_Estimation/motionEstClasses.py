@@ -2,7 +2,7 @@
 import numpy as np
 import cv2 as cv2
 import math
-import pandas
+import time
 
 class imageSegmentor: #segments a frame into blocks of dimention x*y
     segShape = ()             #tuple of segment/block dimentions
@@ -16,13 +16,15 @@ class imageSegmentor: #segments a frame into blocks of dimention x*y
         self.segShape = (y, x)
         self.currentFrame = firstFrame
         self.originalImgShape = firstFrame.shape
-        self.currentFrameSegments = []
         #determining the shape of the padded image
         if(self.currentFrame.shape[0]%self.segShape[0] == 0): colDim = self.currentFrame.shape[0]
         else: colDim = firstFrame.shape[0] + self.segShape[0] - (self.currentFrame.shape[0]%self.segShape[0])
         if(self.currentFrame.shape[1]%self.segShape[1] == 0): rowDim = self.currentFrame.shape[1]
         else: rowDim = firstFrame.shape[1] + self.segShape[1] - (self.currentFrame.shape[1]%self.segShape[1])
         self.paddedImgShape = tuple([colDim, rowDim])
+        self.currentFrameSegments = np.zeros(int(self.paddedImgShape[0]/self.segShape[0]) * int(self.paddedImgShape[1]/self.segShape[1]), dtype=int)
+        self.previousFrameSegments = np.zeros(int(self.paddedImgShape[0]/self.segShape[0]) * int(self.paddedImgShape[1]/self.segShape[1]), dtype=int)
+        
 
     def changeFrame(self, image):
         self.currentFrame = image
@@ -58,7 +60,7 @@ class motionDetector:   #Determins if motions has occured in a segment
         self.segmentor = segmentor
     
     def clearMotionArr(self):
-        self.motionDetector = np.zeros(int(self.segmentor.paddedImgShape[0]/self.segmentor.segShape[0]) * int(self.segmentor.paddedImgShape[1]/self.segmentor.segShape[1]), dtype=int)
+        self.motionArr = np.zeros(int(self.segmentor.paddedImgShape[0]/self.segmentor.segShape[0]) * int(self.segmentor.paddedImgShape[1]/self.segmentor.segShape[1]), dtype=int)
 
     def determineMotion(self):
         self.clearMotionArr()
@@ -85,18 +87,15 @@ class imageReconstructor:   #Reconstructs the image to show regions of motion
         self.outputImg = np.zeros(self.segmentor.paddedImgShape, dtype=self.segmentor.currentFrame.dtype)
 
     def reconstrucImg(self): 
+        self.outputImg = np.zeros(self.segmentor.paddedImgShape, dtype=self.segmentor.currentFrame.dtype)
         for i in range(0, self.motionDetec.motionArr.shape[0], 1):
             x = int(i%int(self.segmentor.paddedImgShape[1]/self.segmentor.segShape[1]))
             y = int(i/int(self.segmentor.paddedImgShape[1]/self.segmentor.segShape[1]))
             if(self.motionDetec.motionArr[i]):
                 self.outputImg[y*self.segmentor.segShape[0]:y*self.segmentor.segShape[0] + self.segmentor.segShape[0], x*self.segmentor.segShape[1]:x*self.segmentor.segShape[1] + self.segmentor.segShape[1]] = np.full(self.segmentor.segShape, 255, dtype=self.segmentor.currentFrame.dtype)
-        return self.outputImg
+        return self.outputImg[:self.segmentor.originalImgShape[0], :self.segmentor.originalImgShape[1]]
 
 class motionRegionEst:
-    inputImage = [] #input Image
-    segShape  = [] #shape of the segments
-    outputImg = [] #output image showing regions of motion
-    motionThresh = 0
     segmentor = None
     motionDetec = None
     imgReconstructor = None
@@ -107,28 +106,45 @@ class motionRegionEst:
         self.segmentor.segmentImage()
         self.motionDetec = motionDetector(self.segmentor, thresh)
         self.imgReconstructor = imageReconstructor(self.segmentor, self.motionDetec)
-        self.motionThresh = thresh
-        self.inputImage = firstFrame
-        self.segShape = (y, x)
 
     def changeInputImg(self, image):
         self.inputImage = image
-    
-    def findMotion(self, img):
+
+    def segmentImg(self, img):
         self.segmentor.changeFrame(img)
         self.segmentor.padImg()
         self.segmentor.segmentImage()
-        self.motionDetec.determineMotion()
-        return self.imgReconstructor.reconstrucImg()
-
-
-
+        return self.segmentor.currentFrameSegments, self.segmentor.previousFrameSegments
+    
+    def findMotion(self, img):
+        segs = self.segmentImg(img)
+        motionArr = self.motionDetec.determineMotion()
+        return segs, motionArr,  self.imgReconstructor.reconstrucImg()
 
 
 #--------------------Testing Section---------------------------
-img = cv2.imread("img1.jpg", 0)
-regionMotionDetec = motionRegionEst(img, 642, 200, 100)
-img = cv2.imread("img1.jpg", 0)
-cv2.imshow("Regions of motion", regionMotionDetec.findMotion(img))
-cv2.waitKey(0)
+#read in video
+cap = cv2.VideoCapture("pip.mp4")
+firstFrame = cv2.cvtColor(cap.read()[1], cv2.COLOR_BGR2GRAY)
+motionEst = motionRegionEst(firstFrame, 100, 100, 1000000)
+
+while cap.read()[0]:
+
+    ret, frame = cap.read()
+
+    if ret == True:
+
+        gray = cv2.cvtColor(frame, cv2.COLOR_BGR2GRAY)
+        segs, mArr, r = motionEst.findMotion(gray)
+        cv2.imshow("Regions of motion",  r)
+        cv2.imshow('frame',frame)
+ 
+
+        if cv2.waitKey(30) & 0xFF == ord('q'):
+            break
+
+    else:
+        break
+
+cap.release()
 cv2.destroyAllWindows()

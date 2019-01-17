@@ -63,11 +63,20 @@ class motionDetector:   #Determins if motions has occured in a segment
         self.motionArr = np.zeros(int(self.segmentor.paddedImgShape[0]/self.segmentor.segShape[0]) * int(self.segmentor.paddedImgShape[1]/self.segmentor.segShape[1]), dtype=int)
 
     def determineMotion(self):
+        #determines the distance between two segments by subtraction 
         self.clearMotionArr()
         for i in range(0, self.segmentor.currentFrameSegments.shape[0], 1):
             if(abs(np.sum(np.sum(self.segmentor.currentFrameSegments[i] - self.segmentor.previousFrameSegments[i], axis=0))) >= self.motionThresh): self.motionArr[i] = 1
         return self.motionArr
     
+    def determineMotionNorm(self):
+        #Detects the distance between two segments using a matrix norm
+        self.clearMotionArr()
+        for i in range(0, self.segmentor.currentFrameSegments.shape[0], 1):
+            number = int((np.sum(np.sum(np.square(self.segmentor.currentFrameSegments[i] - self.segmentor.previousFrameSegments[i]), axis=0)))** 0.5)
+            if( number >= self.motionThresh): self.motionArr[i] = 1
+        return self.motionArr
+
     def setMotionArr(self, nArr):
         self.clearMotionArr()
         if(nArr.shape != self.motionArr.shape):
@@ -118,33 +127,7 @@ class motionRegionEst:
     
     def findMotion(self, img):
         segs = self.segmentImg(img)
-        motionArr = self.motionDetec.determineMotion()
+        motionArr = self.motionDetec.determineMotionNorm()
         return segs, motionArr,  self.imgReconstructor.reconstrucImg()
 
 
-#--------------------Testing Section---------------------------
-#read in video
-cap = cv2.VideoCapture("pip.mp4")
-firstFrame = cv2.cvtColor(cap.read()[1], cv2.COLOR_BGR2GRAY)
-motionEst = motionRegionEst(firstFrame, 100, 100, 1000000)
-
-while cap.read()[0]:
-
-    ret, frame = cap.read()
-
-    if ret == True:
-
-        gray = cv2.cvtColor(frame, cv2.COLOR_BGR2GRAY)
-        segs, mArr, r = motionEst.findMotion(gray)
-        cv2.imshow("Regions of motion",  r)
-        cv2.imshow('frame',frame)
- 
-
-        if cv2.waitKey(30) & 0xFF == ord('q'):
-            break
-
-    else:
-        break
-
-cap.release()
-cv2.destroyAllWindows()

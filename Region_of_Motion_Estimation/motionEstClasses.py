@@ -65,7 +65,7 @@ class motionDetector:   #Determins if motions has occured in a segment
     def determineMotion(self):
         self.clearMotionArr()
         for i in range(0, self.segmentor.currentFrameSegments.shape[0], 1):
-            if(np.sum(np.sum(self.segmentor.currentFrameSegments[i] - self.segmentor.previousFrameSegments[i], axis=0)) >= self.motionThresh): self.motionArr[i] = 1
+            if(abs(np.sum(np.sum(self.segmentor.currentFrameSegments[i] - self.segmentor.previousFrameSegments[i], axis=0))) >= self.motionThresh): self.motionArr[i] = 1
         return self.motionArr
     
     def setMotionArr(self, nArr):
